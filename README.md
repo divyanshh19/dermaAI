@@ -1,47 +1,64 @@
-# AI Skin Lesion Detection System & Grad-CAM Explainability Engine
+# DermaAI — Enterprise AI Skin Lesion Detection & NVIDIA Nemotron Medical Assistant System
 
-A production-grade, portfolio-level Machine Learning System for 7-class dermoscopic skin lesion classification and explainability on the **HAM10000** dataset (`akiec`, `bcc`, `bkl`, `df`, `mel`, `nv`, `vasc`).
-
-Built with **PyTorch**, **FastAPI**, **React**, **OpenCV**, and **Grad-CAM**.
+A production-style **Hybrid Microservices Architecture** combining **Spring Boot 3.x**, **Python PyTorch Deep Learning**, **NVIDIA Nemotron 70B AI Chatbot**, **MySQL Persistence**, and **React UI** for 7-class dermoscopic skin lesion classification (`akiec`, `bcc`, `bkl`, `df`, `mel`, `nv`, `vasc`), calibrated confidence scoring, and Grad-CAM visual heatmaps.
 
 ---
 
-## 🌟 Key Highlights & System Improvements
-
-- **Zero Data Leakage Pipeline:** 70% Train / 15% Val / 15% Test lesion-level stratified split avoiding data contamination.
-- **Automated Data Quality Suite (`data_validation.py`):** Pre-training integrity verification detecting MD5 duplicates, corrupt files, missing images, and split leakage.
-- **Modular Deep Learning Factory:** Supports transfer learning and comparison across **EfficientNet-B0**, **EfficientNet-B2**, **ConvNeXt-Tiny**, and **DeiT-Tiny / ViT**.
-- **Staged Fine-Tuning with Discriminative LRs:** Phase 1 classifier head training followed by Phase 2 backbone unfreezing ($10^{-3}$ head LR, $10^{-5}$ backbone LR).
-- **Class Imbalance Handling:** Controlled Focal Loss ($\gamma = 2.0$) and Weighted Cross-Entropy optimization focusing on hard minority samples (`mel`, `bcc`, `akiec`).
-- **Post-Hoc Probability Calibration:** L-BFGS Temperature Scaling fitting to minimize Expected Calibration Error (ECE) and produce trustworthy confidence scores.
-- **Architecture-Aware Grad-CAM Explainability:** Generates visual feature heatmap overlays highlighting anatomical lesion regions for both CNNs and Vision Transformers.
-- **Interactive Medical-AI Interface:** React UI featuring top-3 probability breakdown, risk level badges, low-confidence abstention warnings, and dynamic test metric dashboards.
-
----
-
-## 📐 System Architecture Diagram
+## 🏛️ Microservices System Architecture
 
 ```mermaid
 graph TD
-    A["HAM10000 Dataset (10,015 images)"] --> B["Splitter (split_dataset.py)"]
-    B --> C["70% Train / 15% Val / 15% Test CSVs"]
-    C --> D["Data Validation (data_validation.py)"]
-    D --> E["Preprocessing & Transforms"]
+    React["React Frontend UI<br/>(Port 5173)"] -->|REST API Requests| SpringBoot["Spring Boot 3.x Main Backend Gateway<br/>(Port 8080)"]
     
-    E --> F["Model Factory (factory.py)"]
-    F --> G1["EfficientNet-B0 / B2"]
-    F --> G2["ConvNeXt-Tiny"]
-    F --> G3["DeiT-Tiny / ViT"]
+    SpringBoot -->|Spring Data JPA| MySQL[("MySQL Database<br/>(Predictions, Conversations, Messages)")]
+    SpringBoot -->|MLServiceClient| FastAPI_ML["Python FastAPI ML Microservice<br/>(Port 8000)<br/>PyTorch + OpenCV + Grad-CAM"]
+    SpringBoot -->|NemotronClient| FastAPI_Chat["Python FastAPI Chatbot Microservice<br/>(Port 8001)<br/>NVIDIA Nemotron 70B LLM"]
     
-    G1 & G2 & G3 --> H["Staged Fine-Tuning & Focal Loss (train.py)"]
-    H --> I["Temperature Calibration (calibrate.py)"]
-    I --> J["Evaluation Pipeline (evaluate.py)"]
-    
-    J --> K["FastAPI Service (app/main.py)"]
-    K --> L["Grad-CAM Service (gradcam.py)"]
-    
-    K & L --> M["React Frontend UI"]
+    FastAPI_Chat -->|OpenAI-Compatible API| NemotronLLM["NVIDIA Nemotron LLM<br/>(NVIDIA Build API Catalog)"]
 ```
+
+---
+
+## 🌟 Technology Stack & Architecture Components
+
+### 1. Spring Boot 3.x Main Application Gateway (`backend-springboot/`)
+- **Technology:** Java 17+, Spring Boot 3.2.3, Spring Web, Spring Data JPA, Hibernate, MySQL, Lombok, OpenAPI 3 (Swagger UI).
+- **Responsibilities:** 
+  - Primary application gateway for all client API endpoints.
+  - Image upload validation and local storage orchestration.
+  - Inter-service communication via Spring `RestTemplate` clients (`MLServiceClient`, `NemotronClient`).
+  - Prediction & chat conversation persistence using Spring Data JPA.
+  - Global Exception Handling (`@RestControllerAdvice`) and Swagger 3 OpenAPI Docs (`/swagger-ui.html`).
+
+### 2. Python PyTorch ML Microservice (`backend/`)
+- **Technology:** Python 3.11, FastAPI, PyTorch, OpenCV, Torchvision, Grad-CAM.
+- **Responsibilities:**
+  - Multi-architecture deep learning models (`EfficientNet-B0`, `ConvNeXt-Tiny`, `ViT-DeiT-Tiny`).
+  - OpenCV DullRazor hair removal and CLAHE contrast enhancement.
+  - Post-hoc L-BFGS Temperature Calibration for Expected Calibration Error (ECE) minimization (**93.27% ROC-AUC**).
+  - Layer-targeted Grad-CAM visual feature heatmap overlays.
+
+### 3. NVIDIA Nemotron AI Chatbot Microservice (`chatbot-service/`)
+- **Technology:** Python 3.11, FastAPI, NVIDIA Nemotron LLM API (`nvidia/llama-3.1-nemotron-70b-instruct` / `meta/llama-3.3-70b-instruct`).
+- **Responsibilities:**
+  - Connects to official NVIDIA Build API Catalog (`https://integrate.api.nvidia.com/v1/chat/completions`).
+  - Enforces 10 strict system-level **Medical Safety Guardrails** (non-definitive diagnostic language, dermatologist referral escalation, emergency warning signs).
+  - Receives auto-loaded prediction context (Primary Diagnosis, Calibrated Confidence, Top Differential Breakdown, Risk Level).
+
+### 4. MySQL Data Persistence (`mysql`)
+- **Database Schema:** `skinlesion_db`
+- **Tables:**
+  - `predictions`: Persists historical skin lesion scan results, confidence scores, and Grad-CAM heatmaps.
+  - `conversations`: Manages user chat session metadata and timestamps.
+  - `chat_messages`: Stores message history for context-aware medical assistant sessions.
+
+### 5. React Frontend UI (`frontend/`)
+- **Technology:** React, Vite, Axios, Custom CSS.
+- **Features:**
+  - **Diagnostic Demo:** Upload lesion images, view calibrated confidence meters, risk level badges, and Grad-CAM visual heatmaps.
+  - **"Ask AI About This Result 🤖"**: Auto-populates prediction context into the Nemotron Chatbot session.
+  - **AI Chatbot Tab:** Interactive medical assistant with quick action prompt chips and medical safety disclaimers.
+  - **Prediction History Tab:** Full table of historical scans stored in MySQL with delete and refresh actions.
 
 ---
 
@@ -61,36 +78,40 @@ graph TD
 
 ## ⚡ Quick Start & Installation
 
-### 1. Clone & Install Dependencies
+### Option 1: Docker Compose Deployment (Recommended)
+
+To launch the full microservices stack with Docker Compose:
+
 ```bash
-git clone https://github.com/divyanshh19/AI-skin-disease-detection.git
-cd AI-skin-disease-detection
-pip install -r backend/requirements.txt
+docker-compose up --build
 ```
 
-### 2. Generate Splits & Validate Data
+- **React Web Application:** `http://localhost:5173`
+- **Spring Boot Swagger 3 API Docs:** `http://localhost:8080/swagger-ui.html`
+- **FastAPI ML Service Docs:** `http://localhost:8000/docs`
+- **FastAPI Nemotron Chatbot Service Docs:** `http://localhost:8001/docs`
+
+---
+
+### Option 2: Manual Multi-Terminal Startup
+
+#### 1. Python ML Microservice (Port 8000)
 ```bash
-python backend/ml/datasets/split_dataset.py --config config.yaml
-python backend/ml/data_validation.py --config config.yaml
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend
 ```
 
-### 3. Model Training & Evaluation
+#### 2. NVIDIA Nemotron Chatbot Microservice (Port 8001)
 ```bash
-python backend/ml/training/train.py --config config.yaml --model efficientnet_b0 --loss focal
-python backend/ml/calibration/calibrate.py --config config.yaml
-python backend/ml/evaluation/evaluate.py --config config.yaml --model efficientnet_b0
-python backend/ml/evaluation/error_analysis.py --config config.yaml --model efficientnet_b0
+python chatbot-service/main.py
 ```
 
-### 4. Launch Application Services
-
-#### FastAPI Backend (Port 8000)
+#### 3. Spring Boot Backend Gateway (Port 8080)
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --app-dir backend
+cd backend-springboot
+mvn spring-boot:run
 ```
-API Documentation: `http://localhost:8000/docs`
 
-#### React Frontend (Port 5173)
+#### 4. React Frontend (Port 5173)
 ```bash
 cd frontend
 npm install
@@ -100,29 +121,24 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🐳 Docker Deployment
+## 📋 REST API Endpoints (Spring Boot Gateway)
 
-To launch the full stack with Docker Compose:
+### Lesion Prediction APIs
+- `POST /api/lesions/predict` — Multipart image upload classification + Grad-CAM heatmap generation + MySQL persistence.
+- `GET /api/lesions/history` — Retrieves all historical predictions saved in MySQL.
+- `GET /api/lesions/{id}` — Fetches a specific prediction record from MySQL.
+- `DELETE /api/lesions/{id}` — Deletes a prediction record.
 
-```bash
-docker-compose up --build
-```
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8000`
-
----
-
-## 📋 API Endpoints
-
-- `POST /api/v1/predict` — Submit an image for calibrated classification.
-- `POST /api/v1/predict/explain` — Submit an image for classification + Grad-CAM heatmap overlay.
-- `GET /api/v1/health` — System status and loaded model info.
-- `GET /api/v1/model-info` — Metadata for active model architecture.
-- `GET /api/v1/metrics` — Serves evaluated test metrics dynamically.
-- `GET /api/v1/classes` — Diagnostic classes directory.
+### NVIDIA Nemotron Chatbot APIs
+- `POST /api/chat` — Sends prompt + prediction context to NVIDIA Nemotron microservice and saves conversation to MySQL.
+- `POST /api/chat/conversations` — Creates a new chat conversation session.
+- `GET /api/chat/conversations` — Retrieves all chat conversations.
+- `GET /api/chat/conversations/{id}` — Retrieves messages in a specific conversation session.
+- `DELETE /api/chat/conversations/{id}` — Deletes a conversation session.
 
 ---
 
-## ⚠️ Medical Disclaimer
+## ⚠️ Medical Safety Guardrails & Disclaimer
 
-**RESEARCH AND EDUCATIONAL PROTOTYPE ONLY.** This application is designed for research, portfolio demonstration, and educational purposes. It does NOT provide clinical medical diagnoses. Always seek the advice of a qualified dermatologist or medical professional for health evaluations.
+**RESEARCH & EDUCATIONAL DECISION-SUPPORT PROTOTYPE ONLY.** 
+This application is designed for research, portfolio demonstration, and educational purposes. It does **NOT** provide clinical medical diagnoses, prescribe medications, or replace a board-certified dermatologist. Always consult a licensed healthcare professional for medical evaluations.
