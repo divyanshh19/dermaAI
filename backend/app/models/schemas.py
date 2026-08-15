@@ -1,39 +1,48 @@
-"""Pydantic request/response models for the API."""
-from typing import List, Optional
+"""
+Pydantic API Schemas for AI Skin Lesion Detection System.
+"""
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
-
-class ClassProbability(BaseModel):
-    label: str
+class TopPrediction(BaseModel):
+    class_code: str
     display_name: str
     probability: float
-
+    risk_level: str
 
 class DiseaseInfo(BaseModel):
-    label: str
     display_name: str
+    category: str
+    risk_level: str
     description: str
-    is_malignant_risk: bool
     recommendation: str
 
-
 class PredictionResponse(BaseModel):
-    predicted_label: str
-    predicted_display_name: str
-    confidence: float = Field(..., description="Calibrated confidence of the top prediction, 0-1")
-    class_probabilities: List[ClassProbability]
-    cnn_top_label: str
-    vit_top_label: str
-    models_agree: bool
+    prediction: str
+    prediction_display_name: str
+    category: str
+    risk_level: str
+    confidence: float
+    uncertain: bool
+    uncertainty_message: Optional[str] = None
+    top_predictions: List[TopPrediction]
+    probabilities: Dict[str, float]
     disease_info: DiseaseInfo
-    gradcam_image_base64: Optional[str] = Field(
-        None, description="Base64-encoded PNG of the Grad-CAM overlay")
-    warning: Optional[str] = None
-
+    model_name: str
+    explanation_available: bool
+    gradcam_base64: Optional[str] = None
 
 class HealthResponse(BaseModel):
     status: str
-    cnn_model_loaded: bool
-    vit_model_loaded: bool
-    ensemble_config_loaded: bool
-    version: str = "1.0.0"
+    model_loaded: bool
+    model_name: str
+    device: str
+    version: str = "2.0.0"
+
+class ModelInfoResponse(BaseModel):
+    model_name: str
+    dataset: str = "HAM10000"
+    num_classes: int = 7
+    classes: List[str]
+    confidence_threshold: float
+    loss_function: str

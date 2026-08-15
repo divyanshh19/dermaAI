@@ -1,50 +1,35 @@
 """
-Thin wrapper around ml/preprocessing/cv_pipeline.py for use inside the API layer.
-Kept separate from the ml/ package so the API doesn't need to import training code.
+API Preprocessing Service for Dermoscopic Image Inputs.
 """
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "ml"))
-
 import cv2
 import numpy as np
 import torch
-import torchvision.transforms as T
 from PIL import Image
 
-from preprocessing.cv_pipeline import remove_hair, denoise, enhance_contrast_clahe
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "ml"))
 
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD = [0.229, 0.224, 0.225]
+from preprocessing.pipeline import get_val_transforms, preprocess_opencv
 
-_inference_transform = T.Compose([
-    T.Resize((224, 224)),
-    T.ToTensor(),
-    T.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-])
-
-
-def preprocess_for_inference(image_bytes: bytes):
+def preprocess_for_inference(image_bytes: bytes, target_size: int = 224):
     """
-    Returns:
-      input_tensor: (1, 3, 224, 224) normalized tensor, ready for the model
-      display_rgb_float: (224, 224, 3) float32 [0,1] RGB image for Grad-CAM overlay
+    Decodes raw image bytes and prepares:
+    1. input_tensor: (1, 3, target_size, target_size) standardized tensor
+    2. display_rgb_float: (target_size, target_size, 3) float32 [0, 1] RGB array for Grad-CAM
     """
     file_bytes = np.frombuffer(image_bytes, dtype=np.uint8)
     img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     if img_bgr is None:
-        raise ValueError("Could not decode image. Ensure it's a valid JPEG/PNG file.")
+        raise ValueError("Could not decode uploaded image file. Ensure valid JPEG, PNG, or WEBP.")
 
-    cleaned = remove_hair(img_bgr)
-    cleaned = denoise(cleaned)
-    cleaned = enhance_contrast_clahe(cleaned)
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    pil_img = Image.fromarray(img_rgb)
+    
+    transform = get_val_transforms(target_size)
+    input_tensor = transform(pil_img).unsqueeze(0)
 
-    cleaned_resized = cv2.resize(cleaned, (224, 224), interpolation=cv2.INTER_AREA)
-    rgb = cv2.cvtColor(cleaned_resized, cv2.COLOR_BGR2RGB)
-    display_rgb_float = rgb.astype(np.float32) / 255.0
-
-    pil_img = Image.fromarray(rgb)
-    input_tensor = _inference_transform(pil_img).unsqueeze(0)
+    display_resized = pil_img.resize((target_size, target_size))
+    display_rgb_float = np.array(display_resized, dtype=np.float32) / 255.0
 
     return input_tensor, display_rgb_float

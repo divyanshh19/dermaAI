@@ -5,22 +5,29 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Dataset
+# Dataset & Large Files
 data/
+uploads/
+*.log
 
-# Trained Models
-backend/ml/saved_models/*.pth
+# Trained Models Weights
+*.pth
+
+# Spring Boot
+target/
+backend-springboot/target/
+.mvn/
+*.jar
 
 # Frontend
 frontend/node_modules/
+frontend/dist/
 
 # Environment
 .env
 
-# IDE
+# IDE & OS
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db

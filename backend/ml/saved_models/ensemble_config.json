@@ -1,0 +1,9 @@
+{
+  "cnn_weight": 0.6,
+  "vit_weight": 0.4,
+  "temperatures": {
+    "convnext_tiny": 0.10000000149011612,
+    "efficientnet_b0": 0.9508376121520996,
+    "vit_deit_tiny": 2.052402973175049
+  }
+}

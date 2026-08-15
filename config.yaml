@@ -1,0 +1,37 @@
+# AI Skin Lesion Detection System Configuration
+
+dataset:
+  root_dir: "data/ham10000"
+  metadata_csv: "data/ham10000/metadata.csv"
+  images_dir: "data/ham10000/images"
+  splits_dir: "data/splits"
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+
+training:
+  batch_size: 64
+  num_workers: 0
+  image_size: 224
+  head_epochs: 3
+  fine_tune_epochs: 8
+  head_lr: 0.001
+  backbone_lr: 0.0002
+  weight_decay: 0.0001
+  loss_function: "focal"  # choices: cross_entropy, weighted_ce, focal, label_smoothing
+  focal_gamma: 2.0
+  label_smoothing: 0.1
+  patience: 4
+  use_amp: true
+
+model:
+  name: "convnext_tiny"  # choices: efficientnet_b0, efficientnet_b2, convnext_tiny, vit_deit_tiny
+  num_classes: 7
+  confidence_threshold: 0.40
+
+paths:
+  saved_models_dir: "backend/ml/saved_models"
+  experiments_dir: "experiments"
+  reports_dir: "reports"
+  evaluation_dir: "backend/ml/evaluation/results"

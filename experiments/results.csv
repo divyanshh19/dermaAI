@@ -1,0 +1,7 @@
+model,loss,batch_size,image_size,best_epoch,best_val_macro_f1,checkpoint_path
+efficientnet_b0,focal,32,224,14,0.1079,backend/ml/saved_models\efficientnet_b0_best.pth
+convnext_tiny,focal,32,224,1,0.0446,backend/ml/saved_models\convnext_tiny_best.pth
+vit_deit_tiny,focal,32,224,5,0.1077,backend/ml/saved_models\vit_deit_tiny_best.pth
+efficientnet_b0,focal,64,224,5,0.3563,backend/ml/saved_models\efficientnet_b0_best.pth
+convnext_tiny,focal,64,224,8,0.4892,backend/ml/saved_models\convnext_tiny_best.pth
+efficientnet_b0,focal,64,224,18,0.5013,backend/ml/saved_models\efficientnet_b0_best.pth

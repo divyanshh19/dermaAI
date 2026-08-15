@@ -1,136 +1,184 @@
 """
-Evaluate a trained model (CNN or ViT) or an ensemble of both on the held-out
-test split. Computes accuracy, precision, recall, F1 (macro and per-class),
-confusion matrix, and multi-class ROC-AUC (one-vs-rest).
+Comprehensive Evaluation Pipeline for Skin Lesion Classification.
 
-Usage:
-  python evaluate.py --data-root ../../../data/ham10000 --model cnn --checkpoint ../saved_models/cnn_efficientnet_b0.pth
-  python evaluate.py --data-root ../../../data/ham10000 --model ensemble \
-      --cnn-checkpoint ../saved_models/cnn_efficientnet_b0.pth \
-      --vit-checkpoint ../saved_models/vit_deit_tiny.pth
+Evaluates trained model checkpoints on the held-out test split (test.csv).
+Computes:
+- Overall Accuracy
+- Balanced Accuracy
+- Macro Precision, Recall, F1
+- Weighted F1
+- Multi-class One-vs-Rest ROC-AUC
+- Per-class Precision, Recall, F1
+Generates:
+- Confusion Matrix & Normalized Confusion Matrix plots
+- Per-class evaluation report JSON (backend/ml/evaluation/results/metrics.json)
 """
-import argparse
 import os
 import sys
+import json
+import argparse
+from typing import Dict, Any
 
-import numpy as np
 import torch
-from torch.utils.data import DataLoader
-from sklearn.metrics import (accuracy_score, precision_recall_fscore_support,
-                              confusion_matrix, roc_auc_score, classification_report)
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from torch.utils.data import DataLoader
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    precision_recall_fscore_support,
+    confusion_matrix,
+    roc_auc_score,
+    classification_report
+)
+import yaml
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from datasets.dataset import SkinLesionDataset, build_splits, CLASSES
-from training.train_cnn import build_cnn
-from training.train_vit import build_vit
+from datasets.dataset import SkinLesionDataset, CLASSES, IDX_TO_CLASS
+from models.factory import build_model
 
+def evaluate_checkpoint(
+    config_path: str = "config.yaml",
+    checkpoint_path: str = None,
+    model_name: str = None,
+    out_dir: str = "backend/ml/evaluation/results"
+) -> Dict[str, Any]:
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
 
-def load_model(kind, checkpoint_path, device):
-    if kind == "cnn":
-        model = build_cnn(num_classes=len(CLASSES), freeze_backbone=False)
-    elif kind == "vit":
-        model = build_vit(num_classes=len(CLASSES), freeze_backbone=False)
-    else:
-        raise ValueError(kind)
+    ds_cfg = cfg.get("dataset", {})
+    md_cfg = cfg.get("model", {})
+
+    model_name = model_name or md_cfg.get("name", "efficientnet_b0")
+    checkpoint_path = checkpoint_path or os.path.join("backend/ml/saved_models", f"{model_name}_best.pth")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else ("mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else "cpu"))
+
+    print(f"\n=== Evaluating Model: {model_name} on Held-Out Test Set ===")
+    print(f"Checkpoint Path: {checkpoint_path}")
+    print(f"Evaluation Device: {device}")
+
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"Checkpoint not found at: {checkpoint_path}")
+
+    # Load Test Split
+    splits_dir = ds_cfg.get("splits_dir", "data/splits")
+    test_csv = os.path.join(splits_dir, "test.csv")
+    images_dir = ds_cfg.get("images_dir", "data/ham10000/images")
+
+    if not os.path.exists(test_csv):
+        raise FileNotFoundError(f"Test CSV not found at: {test_csv}")
+
+    test_df = pd.read_csv(test_csv)
+    test_ds = SkinLesionDataset(test_df, images_dir, image_size=cfg.get("training", {}).get("image_size", 224), split="test")
+    test_loader = DataLoader(test_ds, batch_size=32, shuffle=False, num_workers=0)
+
+    # Load Model
+    model = build_model(model_name=model_name, num_classes=len(CLASSES), pretrained=False, freeze_backbone=False)
     ckpt = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(ckpt["model_state_dict"])
+    model.load_state_dict(ckpt["model_state_dict"] if "model_state_dict" in ckpt else ckpt)
     model.to(device).eval()
-    return model
 
+    all_logits = []
+    all_labels = []
 
-@torch.no_grad()
-def get_probs(model, loader, device):
-    all_probs, all_labels = [], []
-    for x, y in loader:
-        x = x.to(device)
-        logits = model(x)
-        probs = torch.softmax(logits, dim=1).cpu().numpy()
-        all_probs.append(probs)
-        all_labels.append(y.numpy())
-    return np.concatenate(all_probs), np.concatenate(all_labels)
+    with torch.no_grad():
+        for x, y in test_loader:
+            x = x.to(device)
+            logits = model(x)
+            all_logits.append(logits.cpu())
+            all_labels.append(y)
 
-
-def compute_metrics(y_true, probs, class_names, title, out_dir):
+    logits_tensor = torch.cat(all_logits, dim=0)
+    probs = torch.softmax(logits_tensor, dim=1).numpy()
+    y_true = torch.cat(all_labels, dim=0).numpy()
     y_pred = probs.argmax(axis=1)
-    acc = accuracy_score(y_true, y_pred)
-    precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average="macro", zero_division=0)
 
-    print(f"\n=== {title} ===")
-    print(f"Accuracy:  {acc:.4f}")
-    print(f"Precision (macro): {precision:.4f}")
-    print(f"Recall (macro):    {recall:.4f}")
-    print(f"F1 (macro):        {f1:.4f}")
-    print("\nPer-class report:")
-    print(classification_report(y_true, y_pred, target_names=class_names, zero_division=0))
+    # Compute Core Metrics
+    acc = float(accuracy_score(y_true, y_pred))
+    bal_acc = float(balanced_accuracy_score(y_true, y_pred))
+    p_macro, r_macro, f1_macro, _ = precision_recall_fscore_support(y_true, y_pred, average="macro", zero_division=0)
+    p_weighted, r_weighted, f1_weighted, _ = precision_recall_fscore_support(y_true, y_pred, average="weighted", zero_division=0)
 
     try:
-        y_true_onehot = np.eye(len(class_names))[y_true]
-        roc_auc = roc_auc_score(y_true_onehot, probs, average="macro", multi_class="ovr")
-        print(f"ROC-AUC (macro, OvR): {roc_auc:.4f}")
-    except ValueError as e:
-        roc_auc = None
-        print(f"ROC-AUC could not be computed: {e}")
+        y_true_onehot = np.eye(len(CLASSES))[y_true]
+        roc_auc = float(roc_auc_score(y_true_onehot, probs, average="macro", multi_class="ovr"))
+    except Exception as e:
+        roc_auc = 0.0
+        print(f"Warning: OvR ROC-AUC computation failed: {e}")
 
-    cm = confusion_matrix(y_true, y_pred)
+    # Per-class metrics
+    p_class, r_class, f1_class, support_class = precision_recall_fscore_support(y_true, y_pred, average=None, zero_division=0)
+    per_class_metrics = {}
+    for idx, name in enumerate(CLASSES):
+        per_class_metrics[name] = {
+            "precision": float(p_class[idx]),
+            "recall": float(r_class[idx]),
+            "f1_score": float(f1_class[idx]),
+            "support": int(support_class[idx])
+        }
+
+    results = {
+        "model_name": model_name,
+        "checkpoint_path": checkpoint_path,
+        "test_samples": len(test_df),
+        "accuracy": acc,
+        "balanced_accuracy": bal_acc,
+        "macro_precision": float(p_macro),
+        "macro_recall": float(r_macro),
+        "macro_f1": float(f1_macro),
+        "weighted_f1": float(f1_weighted),
+        "roc_auc": roc_auc,
+        "per_class_metrics": per_class_metrics
+    }
+
+    print("\n-----------------------------------------------------")
+    print(f" Overall Accuracy:      {acc*100:.2f}%")
+    print(f" Balanced Accuracy:     {bal_acc*100:.2f}%")
+    print(f" Macro Precision:       {p_macro:.4f}")
+    print(f" Macro Recall:          {r_macro:.4f}")
+    print(f" Macro F1 Score:        {f1_macro:.4f}")
+    print(f" Multi-Class ROC-AUC:   {roc_auc:.4f}")
+    print("-----------------------------------------------------\n")
+
+    # Save JSON Report
     os.makedirs(out_dir, exist_ok=True)
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
-    plt.xlabel("Predicted")
-    plt.ylabel("True")
-    plt.title(f"Confusion Matrix - {title}")
+    metrics_json_path = os.path.join(out_dir, "metrics.json")
+    with open(metrics_json_path, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"Saved evaluation metrics JSON to {metrics_json_path}")
+
+    # Plot Confusion Matrix
+    cm = confusion_matrix(y_true, y_pred)
+    cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=CLASSES, yticklabels=CLASSES, ax=axes[0])
+    axes[0].set_title(f"Confusion Matrix ({model_name})")
+    axes[0].set_xlabel("Predicted")
+    axes[0].set_ylabel("True")
+
+    sns.heatmap(cm_norm, annot=True, fmt=".2f", cmap="Blues", xticklabels=CLASSES, yticklabels=CLASSES, ax=axes[1])
+    axes[1].set_title(f"Normalized Confusion Matrix ({model_name})")
+    axes[1].set_xlabel("Predicted")
+    axes[1].set_ylabel("True")
+
     plt.tight_layout()
-    fig_path = os.path.join(out_dir, f"confusion_matrix_{title.replace(' ', '_').lower()}.png")
-    plt.savefig(fig_path)
+    cm_plot_path = os.path.join(out_dir, "confusion_matrix.png")
+    plt.savefig(cm_plot_path, dpi=300)
     plt.close()
-    print(f"Confusion matrix saved to {fig_path}")
+    print(f"Saved confusion matrix plot to {cm_plot_path}")
 
-    return {"accuracy": acc, "precision": precision, "recall": recall, "f1": f1, "roc_auc": roc_auc}
-
-
-def main(args):
-    device = torch.device("cpu")
-    metadata_csv = os.path.join(args.data_root, "metadata.csv")
-    images_root = os.path.join(args.data_root, "images")
-    _, _, test_df = build_splits(metadata_csv)
-    test_ds = SkinLesionDataset(test_df, images_root, target_size=224, train=False)
-    test_loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
-
-    if args.model == "cnn":
-        model = load_model("cnn", args.checkpoint, device)
-        probs, labels = get_probs(model, test_loader, device)
-        compute_metrics(labels, probs, CLASSES, "CNN (EfficientNet-B0)", args.out_dir)
-
-    elif args.model == "vit":
-        model = load_model("vit", args.checkpoint, device)
-        probs, labels = get_probs(model, test_loader, device)
-        compute_metrics(labels, probs, CLASSES, "ViT (DeiT-tiny)", args.out_dir)
-
-    elif args.model == "ensemble":
-        cnn_model = load_model("cnn", args.cnn_checkpoint, device)
-        vit_model = load_model("vit", args.vit_checkpoint, device)
-        cnn_probs, labels = get_probs(cnn_model, test_loader, device)
-        vit_probs, _ = get_probs(vit_model, test_loader, device)
-
-        compute_metrics(labels, cnn_probs, CLASSES, "CNN (EfficientNet-B0)", args.out_dir)
-        compute_metrics(labels, vit_probs, CLASSES, "ViT (DeiT-tiny)", args.out_dir)
-
-        ensemble_probs = args.cnn_weight * cnn_probs + (1 - args.cnn_weight) * vit_probs
-        compute_metrics(labels, ensemble_probs, CLASSES,
-                         f"Ensemble (cnn_weight={args.cnn_weight})", args.out_dir)
-
+    return results
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-root", type=str, default="../../../data/ham10000")
-    parser.add_argument("--model", choices=["cnn", "vit", "ensemble"], required=True)
-    parser.add_argument("--checkpoint", type=str, help="For --model cnn or vit")
-    parser.add_argument("--cnn-checkpoint", type=str, default="../saved_models/cnn_efficientnet_b0.pth")
-    parser.add_argument("--vit-checkpoint", type=str, default="../saved_models/vit_deit_tiny.pth")
-    parser.add_argument("--cnn-weight", type=float, default=0.5,
-                         help="Weight given to CNN in ensemble average (ViT gets 1-weight)")
-    parser.add_argument("--batch-size", type=int, default=16)
-    parser.add_argument("--out-dir", type=str, default="../evaluation/results")
+    parser.add_argument("--config", type=str, default="config.yaml")
+    parser.add_argument("--checkpoint", type=str, default=None)
+    parser.add_argument("--model", type=str, default=None)
     args = parser.parse_args()
-    main(args)
+
+    evaluate_checkpoint(config_path=args.config, checkpoint_path=args.checkpoint, model_name=args.model)

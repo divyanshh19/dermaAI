@@ -1,19 +1,85 @@
-version: "3.9"
+version: '3.8'
+
 services:
-  backend:
-    build: ./backend
+  mysql:
+    image: mysql:8.0
+    container_name: dermaai-mysql
+    environment:
+      MYSQL_DATABASE: skinlesion_db
+      MYSQL_USER: skinuser
+      MYSQL_PASSWORD: skinpassword
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - dermaai-network
+
+  skin-ml-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dermaai-ml-service
     ports:
       - "8000:8000"
     volumes:
       - ./backend/ml/saved_models:/app/ml/saved_models
+      - ./data:/app/data
+    networks:
+      - dermaai-network
+
+  chatbot-service:
+    build:
+      context: ./chatbot-service
+      dockerfile: Dockerfile
+    container_name: dermaai-chatbot-service
     environment:
-      - CNN_CHECKPOINT_PATH=/app/ml/saved_models/cnn_efficientnet_b0.pth
-      - VIT_CHECKPOINT_PATH=/app/ml/saved_models/vit_deit_tiny.pth
-      - ENSEMBLE_CONFIG_PATH=/app/ml/saved_models/ensemble_config.json
+      NEMOTRON_SERVICE_URL: ${NEMOTRON_SERVICE_URL:-https://integrate.api.nvidia.com/v1/chat/completions}
+      NEMOTRON_MODEL: ${NEMOTRON_MODEL:-nvidia/llama-3.1-nemotron-70b-instruct}
+      NEMOTRON_API_KEY: ${NEMOTRON_API_KEY:-}
+    ports:
+      - "8001:8001"
+    networks:
+      - dermaai-network
+
+  backend-springboot:
+    build:
+      context: ./backend-springboot
+      dockerfile: Dockerfile
+    container_name: dermaai-springboot-backend
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/skinlesion_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: skinuser
+      DB_PASSWORD: skinpassword
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      DB_DIALECT: org.hibernate.dialect.MySQLDialect
+      ML_SERVICE_URL: http://skin-ml-service:8000
+      CHATBOT_SERVICE_URL: http://chatbot-service:8001
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - skin-ml-service
+      - chatbot-service
+    networks:
+      - dermaai-network
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dermaai-frontend
     ports:
-      - "3000:80"
+      - "5173:5173"
     depends_on:
-      - backend
+      - backend-springboot
+    networks:
+      - dermaai-network
+
+volumes:
+  mysql_data:
+
+networks:
+  dermaai-network:
+    driver: bridge
