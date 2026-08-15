@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 
 NEMOTRON_SERVICE_URL = os.getenv("NEMOTRON_SERVICE_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
 NEMOTRON_MODEL = os.getenv("NEMOTRON_MODEL", "meta/llama-3.3-70b-instruct")
-NEMOTRON_API_KEY = os.getenv("NEMOTRON_API_KEY", "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")
+NEMOTRON_API_KEY = os.getenv("NEMOTRON_API_KEY", "")
 
 SYSTEM_PROMPT = """You are DermaAI Assistant, a cautious, empathetic AI medical-information guide.
 
