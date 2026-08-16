@@ -26,13 +26,13 @@ spring:
 # Microservices Communication Configuration
 services:
   ml-service:
-    url: ${ML_SERVICE_URL:http://localhost:8000}
-    connect-timeout-ms: 5000
-    read-timeout-ms: 30000
+    url: ${ML_SERVICE_URL:https://dermaai-ml-service.onrender.com}
+    connect-timeout-ms: 10000
+    read-timeout-ms: 45000
   chatbot-service:
-    url: ${CHATBOT_SERVICE_URL:http://localhost:8001}
-    connect-timeout-ms: 5000
-    read-timeout-ms: 30000
+    url: ${CHATBOT_SERVICE_URL:https://dermaai-chatbot-service.onrender.com}
+    connect-timeout-ms: 10000
+    read-timeout-ms: 45000
 
 # File Upload Configuration
 file:

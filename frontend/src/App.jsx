@@ -23,7 +23,7 @@ export default function App() {
     } catch (err) {
       console.error("Analysis Error:", err);
       setError(
-        err.response?.data?.message || err.response?.data?.detail || "Prediction failed. Ensure the Spring Boot backend server is running at http://localhost:8080."
+        err.response?.data?.message || err.response?.data?.detail || "Prediction request failed. Please wait a moment while the cloud microservices wake up, then try again."
       );
     } finally {
       setLoading(false);
