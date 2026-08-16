@@ -173,6 +173,10 @@ class InferenceService:
         return len(self.models) > 0
 
     @property
+    def model_name(self) -> str:
+        return self.primary_model_key
+
+    @property
     def primary_model(self) -> torch.nn.Module:
         if self.primary_model_name in self.models:
             return self.models[self.primary_model_name]
