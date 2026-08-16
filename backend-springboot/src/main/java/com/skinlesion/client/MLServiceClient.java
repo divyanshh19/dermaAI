@@ -18,7 +18,7 @@ public class MLServiceClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${services.ml-service.url:http://localhost:8000}")
+    @Value("${services.ml-service.url:https://dermaai-ml-service.onrender.com}")
     private String mlServiceUrl;
 
     public MLServiceClient() {
@@ -27,7 +27,8 @@ public class MLServiceClient {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> predict(MultipartFile file, boolean explainable) {
-        String url = mlServiceUrl + "/api/v1/predict?explainable=" + explainable;
+        String endpoint = explainable ? "/api/v1/predict/explain" : "/api/v1/predict";
+        String url = mlServiceUrl + endpoint;
 
         try {
             HttpHeaders headers = new HttpHeaders();

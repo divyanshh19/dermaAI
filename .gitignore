@@ -10,8 +10,10 @@ data/
 uploads/
 *.log
 
-# Trained Models Weights
+# Trained Models Weights (Allow trained EfficientNet-B0 checkpoint)
 *.pth
+!backend/ml/saved_models/efficientnet_b0_best.pth
+!backend/ml/saved_models/ensemble_config.json
 
 # Spring Boot
 target/
