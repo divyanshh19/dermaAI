@@ -1,9 +1,9 @@
 import axios from "axios";
 
-// Spring Boot Main Gateway URL (Primary) & FastAPI ML Direct URL (Fallback)
-const SPRINGBOOT_URL = import.meta.env.VITE_SPRINGBOOT_URL || "https://dermaai-backend-fxl0.onrender.com/api";
-const FASTAPI_ML_URL = import.meta.env.VITE_ML_URL || "https://dermaai-ml-service.onrender.com/api/v1";
-const FASTAPI_CHAT_URL = import.meta.env.VITE_CHAT_URL || "https://dermaai-chatbot-service.onrender.com";
+// Local machine primary URLs (Spring Boot Gateway 8080, FastAPI ML 8000, FastAPI Chatbot 8001)
+const SPRINGBOOT_URL = import.meta.env.VITE_SPRINGBOOT_URL || "http://localhost:8080/api";
+const FASTAPI_ML_URL = import.meta.env.VITE_ML_URL || "http://localhost:8000/api/v1";
+const FASTAPI_CHAT_URL = import.meta.env.VITE_CHAT_URL || "http://localhost:8001";
 
 export const api = {
   // Lesion Prediction API with Automatic Spring Boot -> FastAPI Fallback
@@ -15,16 +15,16 @@ export const api = {
       // Primary: Call Spring Boot Gateway
       const response = await axios.post(`${SPRINGBOOT_URL}/lesions/predict?explainable=${explain}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 25000,
+        timeout: 15000,
       });
       return response.data;
     } catch (err) {
-      console.warn("Spring Boot gateway offline/unreachable. Falling back to Python FastAPI ML service.");
+      console.warn("Spring Boot gateway offline/unreachable. Falling back to Python FastAPI ML service at http://localhost:8000.");
       // Fallback: Call FastAPI ML Service directly
       const endpoint = explain ? `${FASTAPI_ML_URL}/predict/explain` : `${FASTAPI_ML_URL}/predict`;
       const response = await axios.post(endpoint, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 25000,
+        timeout: 15000,
       });
       return response.data;
     }
@@ -33,11 +33,11 @@ export const api = {
   // Prediction History APIs (Tries Spring Boot first, then FastAPI)
   async getPredictionHistory() {
     try {
-      const response = await axios.get(`${SPRINGBOOT_URL}/lesions/history`, { timeout: 10000 });
+      const response = await axios.get(`${SPRINGBOOT_URL}/lesions/history`, { timeout: 5000 });
       return response.data;
     } catch (err) {
       try {
-        const response = await axios.get(`${FASTAPI_ML_URL}/history`, { timeout: 10000 });
+        const response = await axios.get(`${FASTAPI_ML_URL}/history`, { timeout: 5000 });
         return response.data;
       } catch (e) {
         return [];
@@ -65,16 +65,16 @@ export const api = {
         message,
         conversationId,
         predictionContext,
-      }, { timeout: 25000 });
+      }, { timeout: 15000 });
       return response.data;
     } catch (err) {
-      console.warn("Spring Boot Chat gateway offline. Falling back to FastAPI Nemotron Chatbot.");
+      console.warn("Spring Boot Chat gateway offline. Falling back to FastAPI Nemotron Chatbot at http://localhost:8001.");
       // Fallback: Call FastAPI Chatbot Service directly
       const response = await axios.post(`${FASTAPI_CHAT_URL}/chat`, {
         message,
         conversationId: conversationId || "default",
         predictionContext,
-      }, { timeout: 25000 });
+      }, { timeout: 15000 });
       return response.data;
     }
   },
