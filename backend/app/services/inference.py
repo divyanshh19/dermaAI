@@ -113,13 +113,13 @@ class InferenceService:
         return {}
 
     def _find_checkpoint_for_model(self, m_name: str) -> Optional[str]:
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ml", "saved_models"))
         candidates = [
+            os.path.join(base_dir, f"{m_name}_best.pth"),
+            os.path.join(base_dir, f"{m_name}_last.pth"),
             os.path.join("backend/ml/saved_models", f"{m_name}_best.pth"),
             os.path.join("ml/saved_models", f"{m_name}_best.pth"),
-            os.path.join("backend/ml/saved_models", f"{m_name}_last.pth"),
-            os.path.join("ml/saved_models", f"{m_name}_last.pth"),
-            os.path.join(os.path.dirname(__file__), "..", "..", "ml", "saved_models", f"{m_name}_best.pth"),
-            os.path.join(os.path.dirname(__file__), "..", "..", "ml", "saved_models", f"{m_name}_last.pth")
+            f"/app/ml/saved_models/{m_name}_best.pth"
         ]
         for c in candidates:
             if os.path.exists(c):
