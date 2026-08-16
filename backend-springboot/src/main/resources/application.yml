@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   servlet:
     context-path: /
 
@@ -15,7 +15,9 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
-    database-platform: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
+    properties:
+      hibernate:
+        dialect: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
   h2:
     console:
       enabled: true
