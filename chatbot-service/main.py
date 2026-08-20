@@ -1,6 +1,8 @@
 """
-FastAPI Chatbot Microservice Entry Point (Port 8001).
-Serves POST /chat for NVIDIA Nemotron Medical Assistant.
+DermaAI System — Enterprise AI Skin Lesion Detection & Medical Assistant
+Copyright (c) 2026 Divyansh. All Rights Reserved.
+Author: Divyansh (https://github.com/divyanshh19/dermaAI)
+License: MIT License
 """
 import os
 import sys

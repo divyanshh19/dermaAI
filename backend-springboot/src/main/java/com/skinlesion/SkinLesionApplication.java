@@ -1,3 +1,9 @@
+/**
+ * DermaAI System — Enterprise AI Skin Lesion Detection & Medical Assistant
+ * Copyright (c) 2026 Divyansh. All Rights Reserved.
+ * Author: Divyansh (https://github.com/divyanshh19/dermaAI)
+ * License: MIT License
+ */
 package com.skinlesion;
 
 import org.springframework.boot.SpringApplication;

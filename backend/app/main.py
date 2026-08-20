@@ -1,5 +1,8 @@
 """
-FastAPI Application Server Entry Point.
+DermaAI System — Enterprise AI Skin Lesion Detection & Medical Assistant
+Copyright (c) 2026 Divyansh. All Rights Reserved.
+Author: Divyansh (https://github.com/divyanshh19/dermaAI)
+License: MIT License
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

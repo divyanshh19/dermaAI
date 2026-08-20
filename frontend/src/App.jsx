@@ -1,3 +1,9 @@
+/**
+ * DermaAI System — Enterprise AI Skin Lesion Detection & Medical Assistant
+ * Copyright (c) 2026 Divyansh. All Rights Reserved.
+ * Author: Divyansh (https://github.com/divyanshh19/dermaAI)
+ * License: MIT License
+ */
 import React, { useState } from "react";
 import { ImageUploader } from "./components/ImageUploader";
 import { PredictionResult } from "./components/PredictionResult";
@@ -120,6 +126,9 @@ export default function App() {
         </p>
         <p>
           This system is an AI-based research and educational decision-support prototype trained on the HAM10000 dataset and does NOT constitute a clinical diagnosis. Always consult a licensed healthcare professional or dermatologist for clinical evaluation.
+        </p>
+        <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--accent-primary)", fontWeight: 600 }}>
+          Designed & Developed by Divyansh © 2026. All Rights Reserved.
         </p>
       </footer>
     </div>
