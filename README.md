@@ -137,8 +137,3 @@ Open `http://localhost:5173` in your browser.
 - `DELETE /api/chat/conversations/{id}` — Deletes a conversation session.
 
 ---
-
-## ⚠️ Medical Safety Guardrails & Disclaimer
-
-**RESEARCH & EDUCATIONAL DECISION-SUPPORT PROTOTYPE ONLY.** 
-This application is designed for research, portfolio demonstration, and educational purposes. It does **NOT** provide clinical medical diagnoses, prescribe medications, or replace a board-certified dermatologist. Always consult a licensed healthcare professional for medical evaluations.
