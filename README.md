@@ -76,51 +76,6 @@ graph TD
 
 ---
 
-## ⚡ Quick Start & Installation
-
-### Option 1: Docker Compose Deployment (Recommended)
-
-To launch the full microservices stack with Docker Compose:
-
-```bash
-docker-compose up --build
-```
-
-- **React Web Application:** `http://localhost:5173`
-- **Spring Boot Swagger 3 API Docs:** `http://localhost:8080/swagger-ui.html`
-- **FastAPI ML Service Docs:** `http://localhost:8000/docs`
-- **FastAPI Nemotron Chatbot Service Docs:** `http://localhost:8001/docs`
-
----
-
-### Option 2: Manual Multi-Terminal Startup
-
-#### 1. Python ML Microservice (Port 8000)
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend
-```
-
-#### 2. NVIDIA Nemotron Chatbot Microservice (Port 8001)
-```bash
-python chatbot-service/main.py
-```
-
-#### 3. Spring Boot Backend Gateway (Port 8080)
-```bash
-cd backend-springboot
-mvn spring-boot:run
-```
-
-#### 4. React Frontend (Port 5173)
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open `http://localhost:5173` in your browser.
-
----
-
 ## 📋 REST API Endpoints (Spring Boot Gateway)
 
 ### Lesion Prediction APIs
